@@ -1,18 +1,18 @@
 {
-  "name": "sosodex",
+  "name": "vega",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @sosodex/web dev",
-    "build": "pnpm --filter @sosodex/web build",
-    "start": "pnpm --filter @sosodex/web start",
-    "lint": "pnpm --filter @sosodex/web lint",
-    "typecheck": "pnpm --filter @sosodex/web typecheck",
-    "frontend": "pnpm --filter @sosodex/web dev",
-    "backend": "cd services/sosodex-backend && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000",
-    "install:frontend": "pnpm --filter @sosodex/web install",
-    "install:backend": "cd services/sosodex-backend && pip install -e .",
-    "db:migrate": "cd services/sosodex-backend && alembic upgrade head",
-    "db:migration:new": "cd services/sosodex-backend && alembic revision --autogenerate -m \"describe change\""
+    "dev": "pnpm --filter @vega/web dev",
+    "build": "pnpm --filter @vega/web build",
+    "start": "pnpm --filter @vega/web start",
+    "lint": "pnpm --filter @vega/web lint",
+    "typecheck": "pnpm --filter @vega/web typecheck",
+    "frontend": "pnpm --filter @vega/web dev",
+    "backend": "cd services/vega-backend && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000",
+    "install:frontend": "pnpm --filter @vega/web install",
+    "install:backend": "cd services/vega-backend && pip install -e .",
+    "db:migrate": "cd services/vega-backend && alembic upgrade head",
+    "db:migration:new": "cd services/vega-backend && alembic revision --autogenerate -m \"describe change\""
   }
 }

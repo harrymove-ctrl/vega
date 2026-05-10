@@ -1,9 +1,9 @@
-# Sosodex
+# Vega
 
 > **Build Your One-Person On-Chain Finance Business with SoSoValue**
 > ([Akindo Wave Hack](https://app.akindo.io/wave-hacks/JBEQXgN4Zi2jA3wA?tab=overview)).
 
-Sosodex turns SoSoValue's research, indices, and on-chain orderbook into an
+Vega turns SoSoValue's research, indices, and on-chain orderbook into an
 agentic platform. Be your own news agency, index publisher, and fund manager —
 solo, on **ValueChain + SoDEX** spot orderbook trading.
 
@@ -69,7 +69,7 @@ available on-chain to users worldwide.
 - shadcn/ui (Radix) components
 - `@xyflow/react` visual graph builder, `lightweight-charts`, `framer-motion`, `lucide-react`
 
-**Backend** (`services/sosodex-backend`)
+**Backend** (`services/vega-backend`)
 
 - FastAPI + httpx async clients for SoSoValue / SoDEX
 - Supabase (Postgres) + Alembic migrations
@@ -86,7 +86,7 @@ available on-chain to users worldwide.
 ## Monorepo layout
 
 ```
-sosodex/
+vega/
 ├── apps/web/                       ← Next.js dashboard
 │   └── src/
 │       ├── app/
@@ -108,7 +108,7 @@ sosodex/
 │       │   └── page.tsx            ← Landing page
 │       ├── components/             ← app/, builder/, ui/
 │       └── lib/                    ← sosovalue.ts, sodex.ts, wagmi.ts, utils.ts
-├── services/sosodex-backend/       ← FastAPI service
+├── services/vega-backend/       ← FastAPI service
 │   └── src/
 │       ├── api/                    ← health, sosovalue, sodex routes
 │       ├── core/                   ← Pydantic settings
@@ -136,12 +136,12 @@ sosodex/
 
 ```bash
 git clone <this repo>
-cd sosodex
+cd vega
 cp .env.example .env.local                       # fill in keys
 pnpm install                                      # web + shared-types
 
 # backend
-cd services/sosodex-backend
+cd services/vega-backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e .[dev]
 cd ../..

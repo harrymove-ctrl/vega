@@ -1,17 +1,13 @@
-import { Topbar } from "@/components/app/topbar";
-import { PageShell } from "@/components/app/page-shell";
-import { BuilderCanvas } from "@/components/builder/builder-canvas";
+import { Suspense } from "react";
+
+import { BuilderStudio } from "@/components/builder/builder-studio";
 
 export default function BuilderPage() {
   return (
-    <>
-      <Topbar title="Builder" />
-      <PageShell
-        title="Visual Strategy Builder"
-        subtitle="Compose Signal-to-Execution agents on a graph: trigger → filter → action."
-      >
-        <BuilderCanvas />
-      </PageShell>
-    </>
+    <main className="flex h-[calc(100vh-64px)] w-full flex-1 flex-col overflow-hidden">
+      <Suspense fallback={<div className="flex flex-1 items-center justify-center text-sm text-neutral-400">Loading builder...</div>}>
+        <BuilderStudio />
+      </Suspense>
+    </main>
   );
 }

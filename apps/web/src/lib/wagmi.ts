@@ -1,12 +1,20 @@
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { connectorsForWallets, getDefaultConfig } from "@rainbow-me/rainbowkit";
+import {
+  metaMaskWallet,
+  rabbyWallet,
+  coinbaseWallet,
+  rainbowWallet,
+  walletConnectWallet,
+  injectedWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { createConfig, http } from "wagmi";
 import { defineChain, type Chain } from "viem";
 import { mainnet, base, arbitrum, optimism, polygon } from "wagmi/chains";
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
 // SoDEX runs on ValueChain (EVM-compatible L1, native gas = $SOSO).
-// RPC / chainId / explorer come from env so we never hardcode unverified
-// network details. Fill from the official ValueChain docs.
+// Chain values come from env so we never hardcode unverified RPC details.
 function maybeValueChain(opts: {
   id: number;
   name: string;
@@ -51,10 +59,68 @@ const chains = [
   optimism,
   polygon,
 ] as const;
+const typedChains = chains as unknown as readonly [Chain, ...Chain[]];
 
-export const wagmiConfig = getDefaultConfig({
-  appName: "Sosodex",
-  projectId,
-  chains: chains as unknown as readonly [Chain, ...Chain[]],
-  ssr: true,
-});
+const isValidProjectId =
+  typeof projectId === "string" &&
+  projectId.length === 32 &&
+  /^[0-9a-f]+$/i.test(projectId) &&
+  projectId !== "0".repeat(32);
+
+// Effective WalletConnect projectId. RainbowKit needs a non-empty string at
+// boot, but actual WalletConnect won't function without a real one — so we
+// only include the WalletConnect wallet entry when the projectId is real.
+const effectiveProjectId = isValidProjectId ? projectId! : "DEV_NO_WC";
+
+const recommendedWallets = [
+  metaMaskWallet,
+  rabbyWallet,
+  coinbaseWallet,
+  rainbowWallet,
+];
+
+const moreWallets = [injectedWallet];
+
+if (isValidProjectId) {
+  // Only expose WalletConnect when we have a real projectId.
+  recommendedWallets.push(walletConnectWallet);
+}
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: "EVM wallets (Vega runs on ValueChain — EVM L1)",
+      wallets: recommendedWallets,
+    },
+    {
+      groupName: "Other",
+      wallets: moreWallets,
+    },
+  ],
+  { appName: "Vega", projectId: effectiveProjectId },
+);
+
+export const wagmiConfig = isValidProjectId
+  ? // With a real projectId, getDefaultConfig handles WalletConnect transports
+    // for us. We still apply connectorsForWallets via spreading custom config.
+    getDefaultConfig({
+      appName: "Vega",
+      projectId: effectiveProjectId,
+      chains: typedChains,
+      ssr: true,
+      wallets: [
+        {
+          groupName: "EVM wallets (Vega runs on ValueChain — EVM L1)",
+          wallets: recommendedWallets,
+        },
+        { groupName: "Other", wallets: moreWallets },
+      ],
+    })
+  : createConfig({
+      chains: typedChains,
+      ssr: true,
+      connectors,
+      transports: Object.fromEntries(
+        typedChains.map((c) => [c.id, http()]),
+      ) as Record<number, ReturnType<typeof http>>,
+    });
