@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 
 import { useTransition } from "@/components/providers/transition-provider";
 import BlurHighlight from "@/components/react-bits/blur-highlight";
+import { LiveEtfFlow } from "@/components/sosovalue/live-etf-flow";
 
 // WebGL components — defer to client only.
 const AuroraBlur = dynamic(() => import("@/components/react-bits/aurora-blur"), {
@@ -147,20 +148,13 @@ export function Hero1() {
                 className="absolute inset-0"
               />
 
-              {/* Live signal HUD */}
+              {/* Live ETF flow HUD — actually calls SoSoValue API */}
               <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-3">
-                <div className="rounded-2xl border border-white/10 bg-black/55 px-4 py-3 text-white backdrop-blur-md">
-                  <div className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[#dce85d]">
-                    Live signal
-                  </div>
-                  <div className="mt-1 font-mono text-sm tracking-tight">
-                    BTC ETF inflow +$184M · sentiment 0.74
-                  </div>
-                </div>
+                <LiveEtfFlow symbol="BTC" className="flex-1" />
                 <button
                   onClick={launchApp}
                   aria-label="Launch dashboard"
-                  className="grid h-12 w-12 place-items-center rounded-full bg-[#dce85d] text-[#090a0a] shadow-[0_0_30px_rgba(220,232,93,0.3)] transition-colors hover:bg-[#e4ef6e]"
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#dce85d] text-[#090a0a] shadow-[0_0_30px_rgba(220,232,93,0.3)] transition-colors hover:bg-[#e4ef6e]"
                 >
                   <ArrowRight className="h-5 w-5 -rotate-45" />
                 </button>

@@ -1,5 +1,12 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function DocsRoot() {
-  redirect("/docs/introduction");
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function DocsIndexRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/docs/introduction");
+  }, [router]);
+  return null;
 }
