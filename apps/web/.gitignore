@@ -1,0 +1,4 @@
+
+# OpenNext + Wrangler build artifacts
+apps/web/.open-next/
+apps/web/.wrangler/
