@@ -2325,39 +2325,19 @@ export function BuilderGraphStudio({
       return;
     }
 
-    setStatus("deploying");
-    setError(null);
-    setRuntimeControlsError(null);
-    try {
-      const botId = await persistBotDraft();
-      await assertSoDEXDeployReadiness(walletAddress.trim(), getAuthHeaders);
-      const response = await fetch(`${API_BASE_URL}/api/bots/${botId}/deploy`, {
-        method: "POST",
-        headers: await getAuthHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          wallet_address: walletAddress.trim(),
-          risk_policy_json: buildRiskPolicyPayload(selectedMarketSymbols, runtimeControls),
-        }),
-      });
-      const payload = (await response.json()) as { status?: string; detail?: string };
-      if (!response.ok) throw new Error(payload.detail ?? "Deploy failed");
-      setLoadedBotIsDeployed(true);
-      setRuntimeStatus(payload.status ?? "active");
-      setRuntimeControlsOpen(false);
-      onNotice?.({
-        eyebrow: "Deployed",
-        title: "Bot is live",
-        detail: "It will start trading as soon as the strategy conditions are met.",
-      });
-    } catch (deployError) {
-      if (deployError instanceof SoDEXReadinessError) {
-        setRuntimeControlsOpen(false);
-        onOpenOnboardingGuide?.();
-      }
-      setError(deployError instanceof Error ? deployError.message : "Deploy failed");
-    } finally {
-      setStatus("idle");
-    }
+    // Wave 1 = demo mode. The Pacifica-cloned deploy path requires a live
+    // FastAPI backend + real EIP712 signing on ValueChain, neither of
+    // which is shipped yet. Show a clean success-style notice instead of
+    // running the broken fetch chain.
+    setRuntimeControlsOpen(false);
+    setLoadedBotIsDeployed(true);
+    setRuntimeStatus("demo");
+    onNotice?.({
+      eyebrow: "Demo mode",
+      title: "Strategy saved locally",
+      detail:
+        "Wave 2 ships the live deploy path: EIP712-signed delegation, SoDEX runtime registration, and on-chain order execution. The graph + risk policy you composed here is the exact payload that wiring will use.",
+    });
   }
 
   const deployActionDisabled = status === "deploying" || loadedBotIsDeployed;
