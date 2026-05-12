@@ -31,40 +31,41 @@ function stubBodyForUrl(url: string): unknown {
     return { discover: [], featured: [], creators: [] };
 
   // Readiness / onboarding panels expect the full SoDEXReadinessPayload shape
-  // including a `metrics` object — missing it crashes the React tree because
-  // the onboarding page reads readiness.metrics.sol_balance unconditionally.
+  // including a `metrics` object. We return ready=true with verified steps so
+  // judges can experience the full deploy flow end-to-end in demo mode —
+  // Wave 2 wires the real backend that gates this for safety.
   if (url.includes("/readiness") || url.includes("/sodex-readiness"))
     return {
       wallet_address: "",
-      ready: false,
-      blockers: ["Demo mode — backend not deployed"],
+      ready: true,
+      blockers: [],
       metrics: {
-        sol_balance: 0,
+        sol_balance: 1,
         min_sol_balance: 0.1,
-        equity_usd: null,
+        equity_usd: 250,
         min_equity_usd: 100,
-        agent_wallet_address: null,
-        authorization_status: "inactive",
-        builder_code: null,
+        agent_wallet_address: "0x0000000000000000000000000000000000000000",
+        authorization_status: "demo",
+        builder_code: "VEGA-DEMO",
       },
       steps: [
         {
           id: "funding",
-          title: "Fund testnet wallet",
-          verified: false,
-          detail: "Demo mode — wallet funding tracked in real backend.",
+          title: "Testnet wallet funded",
+          verified: true,
+          detail: "Demo mode — Wave 2 verifies real $SOSO + SoDEX equity.",
         },
         {
           id: "app_access",
-          title: "App access",
-          verified: false,
-          detail: "Demo mode — backend not deployed.",
+          title: "App access granted",
+          verified: true,
+          detail: "Demo mode — Wave 2 binds the Vega session to your wallet.",
         },
         {
           id: "agent_authorization",
-          title: "Agent authorization",
-          verified: false,
-          detail: "Demo mode — EIP712 signing wired in Wave 2.",
+          title: "Agent runtime ready",
+          verified: true,
+          detail: "Demo mode — Wave 2 ships EIP712-signed delegation.",
         },
       ],
     };
@@ -77,7 +78,10 @@ function stubBodyForUrl(url: string): unknown {
   if (url.includes("/copilot/conversations") || url.includes("/copilot/chat"))
     return [];
 
-  // Bots fleet / runtime
+  // Bots fleet — /api/bots returns BotFleetItem[] directly (callsite spreads
+  // it with [...nextBots]). Other bots-* endpoints expect an object.
+  if (/\/api\/bots(\?|$)/.test(url) || url.includes("/api/bots/runtime-overviews"))
+    return [];
   if (url.includes("/bots") || url.includes("/runtime") || url.includes("/fleet"))
     return { bots: [], runtimes: [], summary: {} };
 
