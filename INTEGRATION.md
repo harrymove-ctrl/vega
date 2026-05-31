@@ -311,6 +311,30 @@ If those properties are unacceptable for a given strategy, the
 strategy needs to scope its risk to the sequencer's uptime + the
 operator's good behaviour, not to L1 finality.
 
+### Verifying L1 connectivity yourself
+
+Two scripts cover the L1 side independently of any SoDEX trading:
+
+- `apps/web/scripts/sodex-l1-readiness.mjs` — reads the wallet's native
+  SOSO balance, nonce, chain id, and latest block from the configured
+  RPC; estimates whether the wallet can afford a 21k-gas self-transfer.
+  Exits non-zero with a hint if not. No broadcast.
+- `apps/web/scripts/sodex-l1-self-transfer.mjs` — broadcasts a 0-SOSO
+  self-transfer (the minimal possible L1 action). Surfaces the tx hash
+  and explorer URL on success, the revert reason on failure. Use
+  `--dry-run` to call `estimateGas` only.
+
+Both read `SODEX_TESTNET_PRIVATE_KEY` from `apps/web/.env.local`
+(gitignored). On a fresh wallet you will see `balance: 0 SOSO` and
+the self-transfer will refuse to broadcast; that is the expected
+state because **the public testnet faucet at
+`testnet.sodex.com/faucet` only credits vUSDC inside the SoDEX
+engine — it does not drop native SOSO to L1**. Per SoSoValue
+docs, native SOSO testnet gas is earned through testnet tasks /
+points rather than handed out by a public faucet. Once a wallet
+holds any non-zero SOSO, the self-transfer script confirms the L1
+broadcast path in one command.
+
 ---
 
 ## 8. Env vars
