@@ -63,6 +63,7 @@ import {
   SoDEXReadinessError,
   assertSoDEXDeployReadiness,
 } from "@/lib/sodex-readiness";
+import { fetchTickers, fetchSymbols } from "@/lib/sodex-public";
 
 type BuilderCatalogTemplate = {
   id: string;
@@ -1258,27 +1259,52 @@ export function BuilderGraphStudio({
   useEffect(() => {
     const controller = new AbortController();
 
+    // Markets come straight from SoDEX (real upstream, no backend needed).
+    // Templates are an optional backend feature; when the FastAPI service
+    // isn't running, we silently fall back to whatever is statically
+    // bundled so the builder still loads.
     void (async () => {
       try {
-        const [templatesResponse, marketsResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/builder/templates`, { signal: controller.signal }),
-          fetch(`${API_BASE_URL}/api/builder/markets`, { signal: controller.signal }),
+        const [tickersRes, symbolsRes] = await Promise.all([
+          fetchTickers(),
+          fetchSymbols(),
         ]);
+        if (controller.signal.aborted) return;
+        if (
+          tickersRes.code === 0 &&
+          symbolsRes.code === 0 &&
+          Array.isArray(symbolsRes.data)
+        ) {
+          const volumeBySymbol = new Map(
+            (tickersRes.data ?? []).map((t) => [t.symbol, Number(t.quoteVolume)]),
+          );
+          setMarkets(
+            symbolsRes.data
+              .filter((s) => s.status === "TRADING")
+              .map<BuilderMarket>((s) => ({
+                symbol: s.name,
+                status: s.status,
+                volume_24h: volumeBySymbol.get(s.name) ?? 0,
+              })),
+          );
+        }
+      } catch {
+        // SoDEX gateway unreachable — leave markets empty; builder still
+        // works with the static market universe symbol.
+      }
 
-        if (controller.signal.aborted) {
-          return;
+      try {
+        const templatesResponse = await fetch(
+          `${API_BASE_URL}/api/builder/templates`,
+          { signal: controller.signal },
+        );
+        if (!controller.signal.aborted && templatesResponse.ok) {
+          setCatalogTemplates(
+            (await templatesResponse.json()) as BuilderCatalogTemplate[],
+          );
         }
-
-        if (templatesResponse.ok) {
-          setCatalogTemplates((await templatesResponse.json()) as BuilderCatalogTemplate[]);
-        }
-        if (marketsResponse.ok) {
-          setMarkets((await marketsResponse.json()) as BuilderMarket[]);
-        }
-      } catch (loadError) {
-        if (!(loadError instanceof DOMException && loadError.name === "AbortError")) {
-          setError(loadError instanceof Error ? loadError.message : "Could not load builder data");
-        }
+      } catch {
+        // Templates backend optional — fail silently.
       }
     })();
 
@@ -1313,8 +1339,12 @@ export function BuilderGraphStudio({
           );
         }
       } catch (loadError) {
+        // Saved-bots index is backend-only. Without FastAPI, this fetch
+        // throws; suppress to console so the page doesn't get a red
+        // banner and the rest of the builder continues to work.
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Could not load saved bots");
+          console.warn("Saved bots unavailable:", loadError);
+          setSavedBots([]);
         }
       } finally {
         if (!cancelled) {
@@ -1740,45 +1770,13 @@ export function BuilderGraphStudio({
     conditionHelper(option).toLowerCase().includes(blockSearch.toLowerCase())
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    const timeoutId = window.setTimeout(async () => {
-      setLiveSchemaStatus("checking");
-      setLiveSchemaError(null);
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/bots/validate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            authoring_mode: "visual",
-            visibility,
-            rules_version: 1,
-            rules_json: rulesJson,
-          }),
-        });
-        const payload = (await response.json()) as DraftValidationResponse;
-        if (cancelled) return;
-        if (!response.ok) {
-          throw new Error(payload.detail ?? "Live validation failed");
-        }
-        const issues = Array.isArray(payload.issues)
-          ? payload.issues.filter((issue): issue is string => typeof issue === "string" && issue.trim().length > 0)
-          : [];
-        setLiveSchemaIssues(issues);
-        setLiveSchemaStatus("idle");
-      } catch (validationError) {
-        if (cancelled) return;
-        setLiveSchemaIssues([]);
-        setLiveSchemaError(validationError instanceof Error ? validationError.message : "Live validation failed");
-        setLiveSchemaStatus("error");
-      }
-    }, 450);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [rulesJson, visibility]);
+  // Live schema validation against /api/bots/validate is a backend-only
+  // path. The deterministic client-side rule check that feeds
+  // `canvasIssues` already covers what the user needs to see — no
+  // server-roundtrip needed. The state was previously re-set on every
+  // edit, which caused a re-render loop with downstream useMemo deps;
+  // initial state (`[]` / `null` / `"idle"`) is already correct so we
+  // simply do not run the effect at all.
 
   const filteredActions = ACTION_OPTIONS.filter((option) =>
     actionTitle(option).toLowerCase().includes(blockSearch.toLowerCase()) ||

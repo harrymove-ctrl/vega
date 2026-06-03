@@ -9,6 +9,8 @@ import { LiveEtfFlow } from "@/components/sosovalue/live-etf-flow";
 import { LiveNewsFeed } from "@/components/sosovalue/live-news-feed";
 import { LiveSoDEXMarkets } from "@/components/sodex/live-markets";
 import { TestOrderPanel } from "@/components/sodex/test-order-panel";
+import { MarketChart } from "@/components/sodex/market-chart";
+import { MyOrdersPanel } from "@/components/sodex/my-orders-panel";
 
 const QUICK_LINKS = [
   {
@@ -74,13 +76,18 @@ export default function DashboardRoute() {
         <LiveEtfFlow symbol="ETH" />
       </section>
 
+      <section className="mb-6">
+        <MarketChart symbol="vBTC_vUSDC" interval="1h" limit={200} />
+      </section>
+
       <section className="mb-6 grid gap-4 lg:grid-cols-2">
         <LiveSoDEXMarkets limit={6} />
         <LiveNewsFeed limit={5} />
       </section>
 
-      <section className="mb-6">
+      <section className="mb-6 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <TestOrderPanel />
+        <MyOrdersPanel />
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
