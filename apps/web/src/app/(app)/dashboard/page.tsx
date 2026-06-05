@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, Workflow, Sparkles, Bot } from "lucide-react";
 
@@ -11,6 +12,8 @@ import { LiveSoDEXMarkets } from "@/components/sodex/live-markets";
 import { TestOrderPanel } from "@/components/sodex/test-order-panel";
 import { MarketChart } from "@/components/sodex/market-chart";
 import { MyOrdersPanel } from "@/components/sodex/my-orders-panel";
+import { StrategyRuntimePanel } from "@/components/bots/strategy-runtime-panel";
+import { buildDefaultGraph } from "@/components/builder/builder-flow-utils";
 
 const QUICK_LINKS = [
   {
@@ -35,6 +38,7 @@ const QUICK_LINKS = [
 
 export default function DashboardRoute() {
   const { walletAddress } = useVegaAuth();
+  const starterGraph = useMemo(() => buildDefaultGraph(), []);
 
   return (
     <main className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8">
@@ -88,6 +92,10 @@ export default function DashboardRoute() {
       <section className="mb-6 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <TestOrderPanel />
         <MyOrdersPanel />
+      </section>
+
+      <section className="mb-6">
+        <StrategyRuntimePanel graph={starterGraph} defaultSymbol="vMAG7ssi_vUSDC" />
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">

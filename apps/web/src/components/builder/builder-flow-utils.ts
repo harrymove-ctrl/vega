@@ -234,6 +234,19 @@ function nextEdgeId() {
   return `edge-${edgeCounter}`;
 }
 
+function buildGraphWithFreshIds(buildGraph: () => BuilderGraphData): BuilderGraphData {
+  const previousBlockCounter = blockCounter;
+  const previousEdgeCounter = edgeCounter;
+
+  blockCounter = 0;
+  edgeCounter = 0;
+  const graph = buildGraph();
+
+  blockCounter = Math.max(previousBlockCounter, blockCounter);
+  edgeCounter = Math.max(previousEdgeCounter, edgeCounter);
+  return graph;
+}
+
 export function createCondition(type: (typeof CONDITION_OPTIONS)[number] = "price_above"): VisualCondition {
   if (type === "cooldown_elapsed") {
     return { id: nextBlockId("condition"), type, symbol: "BTC", seconds: 60 };
@@ -660,16 +673,20 @@ export function actionSummary(action: VisualAction) {
   return `Cancel all resting orders on ${marketLabel}${action.exclude_reduce_only ? " while keeping reduce-only protection intact" : ""}.`;
 }
 
+function configWithoutId<T extends { id: string }>(config: T): Omit<T, "id"> {
+  const copy = { ...config };
+  delete (copy as Partial<T>).id;
+  return copy;
+}
+
 export function serializeGraphNode(node: BuilderFlowNode) {
   if (node.data.kind === "entry") {
     return { id: node.id, kind: node.data.kind, position: node.position };
   }
   if (node.data.kind === "condition") {
-    const { id, ...condition } = node.data.condition;
-    return { id: node.id, kind: node.data.kind, position: node.position, config: condition };
+    return { id: node.id, kind: node.data.kind, position: node.position, config: configWithoutId(node.data.condition) };
   }
-  const { id, ...action } = node.data.action;
-  return { id: node.id, kind: node.data.kind, position: node.position, config: action };
+  return { id: node.id, kind: node.data.kind, position: node.position, config: configWithoutId(node.data.action) };
 }
 
 export function buildPrimaryRoute(nodes: BuilderFlowNode[], edges: BuilderFlowEdge[]) {
@@ -1061,7 +1078,7 @@ export const BUILDER_STARTER_TEMPLATES: BuilderStarterTemplate[] = [
     riskProfile: "Active",
     conditionCount: 4,
     actionCount: 2,
-    buildGraph: buildMomentumBreakoutGraph,
+    buildGraph: () => buildGraphWithFreshIds(buildMomentumBreakoutGraph),
   },
   {
     id: "mean-revert-v1",
@@ -1072,7 +1089,7 @@ export const BUILDER_STARTER_TEMPLATES: BuilderStarterTemplate[] = [
     riskProfile: "Balanced",
     conditionCount: 4,
     actionCount: 2,
-    buildGraph: buildMeanReversionGraph,
+    buildGraph: () => buildGraphWithFreshIds(buildMeanReversionGraph),
   },
   {
     id: "support-exit-v1",
@@ -1083,7 +1100,7 @@ export const BUILDER_STARTER_TEMPLATES: BuilderStarterTemplate[] = [
     riskProfile: "Balanced",
     conditionCount: 4,
     actionCount: 2,
-    buildGraph: buildSupportExitGraph,
+    buildGraph: () => buildGraphWithFreshIds(buildSupportExitGraph),
   },
   {
     id: "twap-trend-v1",
@@ -1094,7 +1111,7 @@ export const BUILDER_STARTER_TEMPLATES: BuilderStarterTemplate[] = [
     riskProfile: "Active",
     conditionCount: 4,
     actionCount: 2,
-    buildGraph: buildTwapTrendGraph,
+    buildGraph: () => buildGraphWithFreshIds(buildTwapTrendGraph),
   },
   {
     id: "maker-reclaim-v1",
@@ -1105,7 +1122,7 @@ export const BUILDER_STARTER_TEMPLATES: BuilderStarterTemplate[] = [
     riskProfile: "Active",
     conditionCount: 4,
     actionCount: 2,
-    buildGraph: buildMakerReclaimGraph,
+    buildGraph: () => buildGraphWithFreshIds(buildMakerReclaimGraph),
   },
 ];
 
