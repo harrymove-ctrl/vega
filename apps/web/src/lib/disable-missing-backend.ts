@@ -7,6 +7,13 @@
  * empty stubs so components see "no data" and render their empty states
  * cleanly. Real upstreams (sosovalue.com, sodex.dev, our worker, wallet
  * RPCs) pass through untouched.
+ *
+ * BYPASS: this stub is active ONLY while NEXT_PUBLIC_DEMO_MODE="1" (default).
+ * Once NEXT_PUBLIC_API_BASE_URL points at the deployed vega-api worker (apps/api)
+ * AND NEXT_PUBLIC_DEMO_MODE="0", fetch is never patched, and the worker URL
+ * doesn't match the localhost prefixes below anyway — so every /api/* call
+ * reaches the live worker and the stub is fully bypassed. Keep this file as the
+ * no-backend fallback; do not delete it while DEMO_MODE remains a supported mode.
  */
 
 const DISABLED_PREFIXES = [
@@ -122,19 +129,26 @@ function stubBodyForUrl(url: string, method = "GET"): unknown {
   // calls .map / iterates over multiple fields unconditionally. NOTE the client
   // route is /api/bot-copy/dashboard, so match the bot-copy prefix too (a plain
   // "/copy/dashboard" check misses it and the page crashed on dashboard.summary).
+  // Shape must match CopyTradingDashboard (copy-dashboard.ts): baskets_summary
+  // is an ARRAY (passed to a child that maps it), alerts[] is top-level, and
+  // summary carries the _7d + readiness_status fields. Keep this in sync with
+  // the real apps/api worker response so demo and live agree.
   if (url.includes("/copy/dashboard") || url.includes("/bot-copy/dashboard"))
     return {
       follows: [],
       positions: [],
       activity: [],
       discover: [],
-      baskets_summary: { count: 0, total_open_notional_usd: 0, total_pnl_usd: 0 },
+      alerts: [],
+      baskets_summary: [],
       summary: {
         active_follows: 0,
         open_positions: 0,
         copied_open_notional_usd: 0,
         copied_unrealized_pnl_usd: 0,
         copied_realized_pnl_usd_24h: 0,
+        copied_realized_pnl_usd_7d: 0,
+        readiness_status: "demo",
       },
       readiness: {
         can_copy: false,

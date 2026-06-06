@@ -1,0 +1,27 @@
+{
+  // Vega backend — a SEPARATE Cloudflare Worker (Hono + Drizzle + D1).
+  // It does NOT touch the static frontend at apps/web.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vega-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-15",
+  // nodejs_compat is required so viem's crypto/buffer paths resolve on Workers.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vega-db",
+      // Run `wrangler d1 create vega-db`, then paste the printed id here.
+      "database_id": "REPLACE_AFTER_d1_create",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    // Non-secret config goes here. AUTH_SECRET is a SECRET — do NOT put it in
+    // [vars]. Set it via:  wrangler secret put AUTH_SECRET
+    "AUTH_PLACEHOLDER": "set-AUTH_SECRET-via-wrangler-secret-put"
+  }
+}
