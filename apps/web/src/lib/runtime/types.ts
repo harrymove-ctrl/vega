@@ -27,6 +27,12 @@ export interface MarketSnapshot {
 export interface RouteEvalContext {
   /** Seconds since this route last fired, or null if it never has. */
   secondsSinceLastFire: number | null;
+  /**
+   * Synthesized spot position for the runtime's symbol, when an account is
+   * connected. Absent (undefined) when no wallet/account is available — in
+   * that case position_* conditions evaluate as "no position".
+   */
+  position?: import("./account-snapshot").SpotPosition;
 }
 
 /** Outcome of evaluating a single condition. */

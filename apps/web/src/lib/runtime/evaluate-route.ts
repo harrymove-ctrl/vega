@@ -10,6 +10,10 @@ import {
   recentLow,
   crossedAbove,
   crossedBelow,
+  atr,
+  bollingerBands,
+  macd,
+  volatilityPct,
 } from "./indicators";
 
 type Cond = Partial<VisualCondition> & { type: string };
@@ -151,27 +155,83 @@ export function evaluateCondition(
       return ok(t, fired, since === null ? "never fired" : `${since.toFixed(0)}s elapsed ≥ ${seconds}s`);
     }
 
-    // Not yet evaluatable in the runtime (need position state or indicators we
-    // don't compute yet). Returning unsupported BLOCKS the route from firing.
+    case "atr_above":
+    case "atr_below": {
+      if (v === undefined) return needs(t, "value");
+      const period = cond.period ?? 14;
+      const cs = candlesFor(snap, cond.timeframe);
+      const a = atr(highs(cs), lows(cs), closes(cs), period);
+      if (a === null) return needs(t, `${period + 1} bars`);
+      const fired = t === "atr_above" ? a > v : a < v;
+      return ok(t, fired, `atr(${period}) ${a.toFixed(6)} ${t === "atr_above" ? ">" : "<"} ${v}`);
+    }
+
+    case "bollinger_above_upper":
+    case "bollinger_below_lower": {
+      const period = cond.period ?? 20;
+      const bands = bollingerBands(closes(candlesFor(snap, cond.timeframe)), period, 2);
+      if (bands === null) return needs(t, `${period} bars`);
+      const fired = t === "bollinger_above_upper" ? last > bands.upper : last < bands.lower;
+      const ref = t === "bollinger_above_upper" ? bands.upper : bands.lower;
+      return ok(t, fired, `last ${last} vs band ${ref.toFixed(4)}`);
+    }
+
+    case "macd_crosses_above_signal":
+    case "macd_crosses_below_signal": {
+      const fastP = cond.fast_period ?? 12;
+      const slowP = cond.slow_period ?? 26;
+      const sigP = cond.signal_period ?? 9;
+      const m = macd(closes(candlesFor(snap, cond.timeframe)), fastP, slowP, sigP);
+      if (m === null || m.macdLine.length < 2) return needs(t, `${slowP + sigP} bars`);
+      const crossed =
+        t === "macd_crosses_above_signal" ? crossedAbove(m.macdLine, m.signal) : crossedBelow(m.macdLine, m.signal);
+      return ok(t, crossed, `macd(${fastP}/${slowP}/${sigP}) ${t === "macd_crosses_above_signal" ? "↑" : "↓"} signal = ${crossed}`);
+    }
+
+    case "volatility_above":
+    case "volatility_below": {
+      if (v === undefined) return needs(t, "value");
+      const period = cond.period ?? 20;
+      const vol = volatilityPct(closes(candlesFor(snap, cond.timeframe)), period);
+      if (vol === null) return needs(t, `${period + 1} bars`);
+      const fired = t === "volatility_above" ? vol > v : vol < v;
+      return ok(t, fired, `vol(${period}) ${vol.toFixed(3)}% ${t === "volatility_above" ? ">" : "<"} ${v}%`);
+    }
+
+    // ── Spot account-state conditions ────────────────────────────────────
+    // Derived from the synthesized position (ctx.position). When no account is
+    // connected, position is absent → these read as "flat" (supported, not
+    // firing), which is the correct behaviour for a position-gated exit route.
     case "has_position":
-    case "position_side_is":
-    case "position_pnl_above":
-    case "position_pnl_below":
-    case "position_pnl_pct_above":
-    case "position_pnl_pct_below":
+      return ok(t, ctx.position?.hasPosition ?? false, ctx.position ? `netQty ${ctx.position.netQty}` : "no account/position");
+    case "position_side_is": {
+      const want = cond.side ?? "long";
+      const net = ctx.position?.netQty ?? 0;
+      const side = net > 0 ? "long" : net < 0 ? "short" : "flat";
+      return ok(t, side === want, `side ${side} == ${want}`);
+    }
     case "position_in_profit":
+      return ok(t, (ctx.position?.hasPosition ?? false) && (ctx.position?.unrealizedPnl ?? 0) > 0, `uPnL ${ctx.position?.unrealizedPnl ?? 0}`);
     case "position_in_loss":
+      return ok(t, (ctx.position?.hasPosition ?? false) && (ctx.position?.unrealizedPnl ?? 0) < 0, `uPnL ${ctx.position?.unrealizedPnl ?? 0}`);
+    case "position_pnl_above":
+      if (v === undefined) return needs(t, "value");
+      return ok(t, (ctx.position?.hasPosition ?? false) && (ctx.position?.unrealizedPnl ?? 0) > v, `uPnL ${ctx.position?.unrealizedPnl ?? 0} > ${v}`);
+    case "position_pnl_below":
+      if (v === undefined) return needs(t, "value");
+      return ok(t, (ctx.position?.hasPosition ?? false) && (ctx.position?.unrealizedPnl ?? 0) < v, `uPnL ${ctx.position?.unrealizedPnl ?? 0} < ${v}`);
+    case "position_pnl_pct_above":
+      if (v === undefined) return needs(t, "value");
+      return ok(t, (ctx.position?.hasPosition ?? false) && (ctx.position?.unrealizedPnlPct ?? 0) > v, `uPnL% ${(ctx.position?.unrealizedPnlPct ?? 0).toFixed(2)} > ${v}`);
+    case "position_pnl_pct_below":
+      if (v === undefined) return needs(t, "value");
+      return ok(t, (ctx.position?.hasPosition ?? false) && (ctx.position?.unrealizedPnlPct ?? 0) < v, `uPnL% ${(ctx.position?.unrealizedPnlPct ?? 0).toFixed(2)} < ${v}`);
+
+    // SoDEX is a SPOT venue — no funding rate exists. Kept honestly unsupported
+    // rather than fabricating a value; this blocks any route that depends on it.
     case "funding_rate_above":
     case "funding_rate_below":
-    case "volatility_above":
-    case "volatility_below":
-    case "bollinger_above_upper":
-    case "bollinger_below_lower":
-    case "atr_above":
-    case "atr_below":
-    case "macd_crosses_above_signal":
-    case "macd_crosses_below_signal":
-      return unsupported(t);
+      return { type: t, supported: false, fired: false, detail: `"${t}" unsupported: SoDEX spot has no funding rate` };
 
     default:
       return unsupported(t);

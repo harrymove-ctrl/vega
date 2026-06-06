@@ -2317,18 +2317,18 @@ export function BuilderGraphStudio({
       return;
     }
 
-    // Wave 1 = demo mode. The Pacifica-cloned deploy path requires a live
-    // FastAPI backend + real EIP712 signing on ValueChain, neither of
-    // which is shipped yet. Show a clean success-style notice instead of
-    // running the broken fetch chain.
+    // There is no backend to host a server-side agent. Rather than fake a
+    // server deploy, point the user at the REAL execution path that ships
+    // today: the wallet-in-loop runtime on the Dashboard, which runs this exact
+    // graph against SoDEX from the connected wallet (EIP-712 signed orders).
     setRuntimeControlsOpen(false);
     setLoadedBotIsDeployed(true);
     setRuntimeStatus("demo");
     onNotice?.({
-      eyebrow: "Demo mode",
-      title: "Strategy saved locally",
+      eyebrow: "Saved locally",
+      title: "Strategy ready — not deployed to a server",
       detail:
-        "Wave 2 ships the live deploy path: EIP712-signed delegation, SoDEX runtime registration, and on-chain order execution. The graph + risk policy you composed here is the exact payload that wiring will use.",
+        "No backend is connected to host a 24/7 server-side agent. To run this strategy live right now, open Dashboard → Live runtime (wallet-in-loop): it executes this exact graph against SoDEX and signs real orders from your wallet. The graph + risk policy you composed here is the payload that path uses.",
     });
   }
 
@@ -2336,7 +2336,7 @@ export function BuilderGraphStudio({
   const deployActionLabel = status === "deploying"
     ? "Deploying..."
     : loadedBotIsDeployed
-      ? "Deployed"
+      ? "Saved locally"
       : "Deploy Bot";
 
   return (

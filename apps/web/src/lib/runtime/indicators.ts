@@ -113,3 +113,95 @@ export function crossedBelow(fast: number[], slow: number[]): boolean {
   const s1 = slow[slow.length - 1];
   return f0 >= s0 && f1 < s1;
 }
+
+/** Sample standard deviation of the last `period` values. null if not enough data. */
+export function stddev(values: number[], period: number): number | null {
+  if (period <= 1 || values.length < period) return null;
+  const slice = values.slice(values.length - period);
+  const mean = slice.reduce((a, b) => a + b, 0) / period;
+  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / (period - 1);
+  return Math.sqrt(variance);
+}
+
+/** Bollinger bands on closes: { mid, upper, lower } at k stddevs. null if not enough data. */
+export function bollingerBands(
+  closes: number[],
+  period: number,
+  k = 2,
+): { mid: number; upper: number; lower: number } | null {
+  const mid = sma(closes, period);
+  const sd = stddev(closes, period);
+  if (mid === null || sd === null) return null;
+  return { mid, upper: mid + k * sd, lower: mid - k * sd };
+}
+
+/**
+ * Wilder's Average True Range for the latest bar. Needs aligned high/low/close
+ * arrays (oldest-first). null if not enough data.
+ */
+export function atr(highs: number[], lows: number[], closes: number[], period: number): number | null {
+  const n = Math.min(highs.length, lows.length, closes.length);
+  if (period <= 0 || n < period + 1) return null;
+  const tr: number[] = [];
+  for (let i = 1; i < n; i++) {
+    const hl = highs[i] - lows[i];
+    const hc = Math.abs(highs[i] - closes[i - 1]);
+    const lc = Math.abs(lows[i] - closes[i - 1]);
+    tr.push(Math.max(hl, hc, lc));
+  }
+  if (tr.length < period) return null;
+  // Seed with simple average of first `period` TRs, then Wilder-smooth.
+  let prev = 0;
+  for (let i = 0; i < period; i++) prev += tr[i];
+  prev /= period;
+  for (let i = period; i < tr.length; i++) {
+    prev = (prev * (period - 1) + tr[i]) / period;
+  }
+  return prev;
+}
+
+/**
+ * MACD: returns the macd-line and signal-line series (tail-aligned) plus their
+ * latest values. null if not enough data. signal = EMA(macdLine, signalPeriod).
+ */
+export function macd(
+  closes: number[],
+  fastPeriod = 12,
+  slowPeriod = 26,
+  signalPeriod = 9,
+): { macdLine: number[]; signal: number[]; macd: number; signalValue: number } | null {
+  const fast = emaSeries(closes, fastPeriod);
+  const slow = emaSeries(closes, slowPeriod);
+  if (fast.length === 0 || slow.length === 0) return null;
+  // emaSeries are seeded at different offsets; align tails to the shorter (slow).
+  const n = Math.min(fast.length, slow.length);
+  const f = fast.slice(fast.length - n);
+  const s = slow.slice(slow.length - n);
+  const macdLine = f.map((v, i) => v - s[i]);
+  const signal = emaSeries(macdLine, signalPeriod);
+  if (signal.length < 1) return null;
+  const m = Math.min(macdLine.length, signal.length);
+  const macdTail = macdLine.slice(macdLine.length - m);
+  const sigTail = signal.slice(signal.length - m);
+  return {
+    macdLine: macdTail,
+    signal: sigTail,
+    macd: macdTail[macdTail.length - 1],
+    signalValue: sigTail[sigTail.length - 1],
+  };
+}
+
+/**
+ * Realized volatility = sample stddev of simple bar-over-bar returns over the
+ * last `period` bars, expressed in percent. null if not enough data.
+ */
+export function volatilityPct(closes: number[], period: number): number | null {
+  if (closes.length < period + 1) return null;
+  const returns: number[] = [];
+  for (let i = closes.length - period; i < closes.length; i++) {
+    if (i < 1 || closes[i - 1] === 0) continue;
+    returns.push((closes[i] - closes[i - 1]) / closes[i - 1]);
+  }
+  const sd = stddev(returns, returns.length);
+  return sd === null ? null : sd * 100;
+}

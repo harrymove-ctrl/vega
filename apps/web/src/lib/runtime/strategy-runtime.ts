@@ -5,6 +5,7 @@ import {
   type BuilderAiRoute,
 } from "@/components/builder/builder-flow-utils";
 import { buildMarketSnapshot } from "./market-snapshot";
+import { buildSpotPosition } from "./account-snapshot";
 import { evaluateRoute, routeIntervals } from "./evaluate-route";
 import { mapActionToOrder } from "./map-action";
 import type { ExecutionStrategy } from "./execution-strategy";
@@ -15,6 +16,12 @@ export interface StrategyRuntimeOptions {
   /** Concrete market this agent trades (resolves the builder universe sentinel). */
   symbol: string;
   strategy: ExecutionStrategy;
+  /**
+   * Connected wallet address. When set, each tick synthesizes the account's
+   * spot position for `symbol` so position_* conditions can evaluate. Omit for
+   * a market-only (entry) strategy or when no wallet is connected.
+   */
+  address?: string;
   /** How often to snapshot + evaluate (ms). Default 15s. */
   pollIntervalMs?: number;
   /** Minimum seconds between two fires of the SAME route (storm guard). Default 60. */
@@ -131,13 +138,19 @@ export class StrategyRuntime {
         klineLimit: this.opts.klineLimit ?? 200,
       });
 
+      // Synthesize the account's spot position once per tick (if a wallet is
+      // connected) so position_* conditions can evaluate.
+      const position = this.opts.address
+        ? await buildSpotPosition(this.opts.symbol, this.opts.address, snap.lastPrice)
+        : undefined;
+
       const reArmMs = (this.opts.reArmSeconds ?? 60) * 1000;
       for (let i = 0; i < this.routes.length; i++) {
         const route = this.routes[i];
         const firedAt = this.lastFiredAt.get(i) ?? null;
         const since = firedAt === null ? null : (Date.now() - firedAt) / 1000;
 
-        const result = evaluateRoute(route, snap, { secondsSinceLastFire: since });
+        const result = evaluateRoute(route, snap, { secondsSinceLastFire: since, position });
 
         if (result.hasUnsupported && !this.warnedUnsupported.has(i)) {
           this.warnedUnsupported.add(i);

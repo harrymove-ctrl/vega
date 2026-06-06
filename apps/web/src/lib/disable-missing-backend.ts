@@ -83,9 +83,10 @@ function stubBodyForUrl(url: string, method = "GET"): unknown {
       ],
     };
 
-  // Backtest bootstrap → various fields
+  // Backtest bootstrap → various fields. `bots` is dereferenced unconditionally
+  // (nextBots.some(...)) at backtesting-lab-page.tsx:353-362, so it MUST be an array.
   if (url.includes("/backtests/bootstrap"))
-    return { strategies: [], markets: [], runs: [], jobs: [] };
+    return { strategies: [], markets: [], runs: [], jobs: [], bots: [] };
 
   // Copilot conversations / chat jobs
   if (url.includes("/copilot/conversations") || url.includes("/copilot/chat"))
@@ -118,8 +119,10 @@ function stubBodyForUrl(url: string, method = "GET"): unknown {
 
   // Copy trading dashboard — full shape required: follows, positions, readiness,
   // summary metric fields, activity, discover, baskets_summary. The component
-  // calls .map / iterates over multiple fields unconditionally.
-  if (url.includes("/copy/dashboard"))
+  // calls .map / iterates over multiple fields unconditionally. NOTE the client
+  // route is /api/bot-copy/dashboard, so match the bot-copy prefix too (a plain
+  // "/copy/dashboard" check misses it and the page crashed on dashboard.summary).
+  if (url.includes("/copy/dashboard") || url.includes("/bot-copy/dashboard"))
     return {
       follows: [],
       positions: [],
@@ -139,11 +142,44 @@ function stubBodyForUrl(url: string, method = "GET"): unknown {
         blockers: ["Demo mode — Wave 2 wires copy execution"],
       },
     };
-  if (url.includes("/copy/portfolios"))
+  if (url.includes("/copy/portfolios") || url.includes("/bot-copy/portfolios"))
     return { portfolios: [], summary: {} };
 
-  // Telegram
-  if (url.includes("/telegram")) return { linked: false, username: null };
+  // Telegram status — must match the full TelegramConnectionStatus shape
+  // (telegram.ts:15). The page dereferences status.notification_prefs,
+  // status.commands.map, status.token_configured, etc. unconditionally, so a
+  // bare {linked,username} stub white-screened the page.
+  if (url.includes("/telegram")) {
+    const method2 = method.toUpperCase();
+    // link / test / disconnect / preferences are POSTs that return a payload
+    // with notification_prefs; reuse the same disconnected shape.
+    void method2;
+    return {
+      wallet_address: "",
+      bot_username: null,
+      bot_link: "",
+      deeplink_url: null,
+      link_expires_at: null,
+      connected: false,
+      telegram_username: null,
+      telegram_first_name: null,
+      chat_label: null,
+      connected_at: null,
+      last_interaction_at: null,
+      notifications_enabled: false,
+      notification_prefs: {
+        critical_alerts: true,
+        execution_failures: true,
+        copy_activity: false,
+        trade_activity: false,
+      },
+      token_configured: false,
+      webhook_url_configured: false,
+      webhook_secret_configured: false,
+      webhook_ready: false,
+      commands: [],
+    };
+  }
 
   // Default: empty array (works for most generic list endpoints)
   return [];

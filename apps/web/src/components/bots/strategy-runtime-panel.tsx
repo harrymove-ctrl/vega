@@ -83,6 +83,8 @@ export function StrategyRuntimePanel({
       symbol,
       strategy,
       pollIntervalMs,
+      // Public read — lets position_* conditions evaluate even in dry-run.
+      address: address ?? undefined,
       onStateChange: setState,
       onLog: (entry) => setLog((prev) => [...prev.slice(-199), entry]),
     });
@@ -136,7 +138,13 @@ export function StrategyRuntimePanel({
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
             >
               {!DEMO_MODE && !isConnected ? <Wallet className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              {!DEMO_MODE && !isConnected ? "Connect" : state === "paused" ? "Resume" : "Deploy"}
+              {!DEMO_MODE && !isConnected
+                ? "Connect"
+                : state === "paused"
+                  ? "Resume"
+                  : DEMO_MODE
+                    ? "Deploy (dry-run)"
+                    : "Deploy"}
             </button>
           ) : (
             <button
