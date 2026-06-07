@@ -41,9 +41,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
-# Production build-time public config for the frontend (NEXT_PUBLIC_* only, no
-# secrets) — committed so the Cloudflare Workers Builds rebuild inlines them.
-!apps/web/.env.production
 
 # vercel
 .vercel
