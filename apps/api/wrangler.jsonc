@@ -15,7 +15,7 @@
       "binding": "DB",
       "database_name": "vega-db",
       // Run `wrangler d1 create vega-db`, then paste the printed id here.
-      "database_id": "REPLACE_AFTER_d1_create",
+      "database_id": "46fb8ff8-407c-4d41-ae98-284e30af030f",
       "migrations_dir": "drizzle"
     }
   ],
